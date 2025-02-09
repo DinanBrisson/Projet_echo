@@ -2,7 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 # Charger l'image en niveaux de gris
-img = cv2.imread("Cropped_Gray/3_1_gray.jpg", cv2.IMREAD_GRAYSCALE)
+img = cv2.imread("Cropped_Gray/1_1_gray.jpg", cv2.IMREAD_GRAYSCALE)
 
 # 1. Appliquer un Filtre Médian plus large pour réduire le bruit speckle
 img_median = cv2.medianBlur(img, 3)

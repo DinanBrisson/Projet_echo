@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Résultats de Segmentation{% endblock %}
+{% block content %}
+<h2>Résultats de Segmentation</h2>
+<div>
+    <p>{{ result }}</p>
+</div>
+<h3>Statistiques</h3>
+<ul>
+    <li>Surface segmentée : {{ stats['surface_segmentee'] }}</li>
+    <li>Autre mesure : {{ stats['autre_mesure'] }}</li>
+</ul>
+<a href="{{ url_for('menu') }}">Retour au menu</a>
+{% endblock %}
