@@ -96,7 +96,7 @@ def menu():
     if 'username' not in session:
         return redirect(url_for('login'))
 
-    available_models = ['Modèle A', 'Modèle B', 'Modèle C']
+    available_models = ['Modèle A', 'Modèle B']
 
     if request.method == 'POST':
         selected_model = request.form.get('model')

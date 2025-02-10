@@ -1,15 +1,10 @@
-import segmentation_models as sm
+import segmentation_models_pytorch as smp
 
-# Configuration générale
-sm.set_framework('tf.keras')
-sm.framework()
-
-# U-Net VGG16
-model_vgg = sm.Unet(
-    backbone_name='vgg16',
-    encoder_weights='imagenet',
-    input_shape=(256, 256),
+model_vgg_pt = smp.Unet(
+    encoder_name="vgg16",
+    encoder_weights="imagenet",
+    in_channels=1,
     classes=2,
     activation='softmax'
 )
-model_vgg.summary()
+print(model_vgg_pt)
