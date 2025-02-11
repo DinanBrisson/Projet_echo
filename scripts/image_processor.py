@@ -242,7 +242,7 @@ class ImageProcessor:
 
     def create_and_save_mask(self, original_shape, cropped_shape, annotation, base_name):
         """
-        Creates a binary mask based on the annotation, resizes it, and saves it.
+        Creates a binary mask based on the annotation, normalizes it, converts to grayscale, resizes it, and saves it.
 
         :param original_shape: Tuple (height, width) of the original image.
         :param cropped_shape: Tuple (height, width) of the cropped image (e.g., (256, 256)).
@@ -254,7 +254,7 @@ class ImageProcessor:
 
         # Convert the annotation points into a NumPy array and draw the polygon on the mask
         pts = np.array(annotation, np.int32)
-        cv2.fillPoly(full_mask, [pts], 255)  # Fill the annotated region in white
+        cv2.fillPoly(full_mask, [pts], 255)  # Fill the annotated region with white
 
         # Extract the same region as the cropped image
         x, y, w, h = cv2.boundingRect(pts)
@@ -263,17 +263,20 @@ class ImageProcessor:
             cropped_mask = full_mask[y:y + h, x:x + w].copy()
 
             # Resize the mask to match the cropped image dimensions (256x256)
-            resized_mask = cv2.resize(cropped_mask, cropped_shape)
+            resized_mask = cv2.resize(cropped_mask, cropped_shape, interpolation=cv2.INTER_NEAREST)
 
-            # Save the mask as a PNG file
+            # Normalize the mask: Ensure values are only 0 or 255
+            normalized_mask = np.where(resized_mask > 0, 255, 0).astype(np.uint8)
+
+            # Save the mask as a PNG file without compression
             mask_filename = f"{base_name}_mask.png"
             mask_path = os.path.join(self.cropped_folder_gray, mask_filename)
-            cv2.imwrite(mask_path, resized_mask)
+            cv2.imwrite(mask_path, normalized_mask, [cv2.IMWRITE_PNG_COMPRESSION, 0])
             print(f"Mask saved: {mask_filename}")
 
             # Display the mask
             plt.figure(figsize=(4, 4))
-            plt.imshow(resized_mask, cmap="gray")
+            plt.imshow(normalized_mask, cmap="gray")
             plt.axis("off")
             plt.title(f"Mask for {base_name}")
             plt.show()
