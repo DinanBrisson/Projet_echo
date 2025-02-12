@@ -1,14 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Résultats de Segmentation{% endblock %}
+{% block title %}Historique des Segmentation{% endblock %}
 {% block content %}
-<h2>Résultats de Segmentation</h2>
-<div>
-    <p>{{ result }}</p>
-</div>
-<h3>Statistiques</h3>
-<ul>
-    <li>Surface segmentée : {{ stats['surface_segmentee'] }}</li>
-    <li>Autre mesure : {{ stats['autre_mesure'] }}</li>
-</ul>
+
+<h2>Historique des Segmentations</h2>
+
+{% if histories %}
+    <table>
+        <tr>
+            <th>Utilisateur</th>
+            <th>Modèle</th>
+            <th>Surface segmentée</th>
+            <th>Autre mesure</th>
+            <th>Date</th>
+        </tr>
+        {% for entry in histories %}
+            <tr>
+                <td>{{ entry.user.username }}</td>  <!-- Affiche le nom de l'utilisateur -->
+                <td>{{ entry.model }}</td>
+                <td>{{ entry.surface_segmentee }}</td>
+                <td>{{ entry.autre_mesure }}</td>
+                <td>{{ entry.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>Aucun historique disponible.</p>
+{% endif %}
+
 <a href="{{ url_for('menu') }}">Retour au menu</a>
 {% endblock %}

@@ -1,14 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Résultats de Segmentation{% endblock %}
 {% block content %}
-<h2>Résultats de Segmentation</h2>
-<div>
-    <p>{{ result }}</p>
-</div>
+{% if img_data %}
+    <h3>Image analysée</h3>
+    <img src="data:image/png;base64,{{ img_data }}" alt="Image segmentée" style="max-width: 100%; height: auto;">
+{% endif %}
+
 <h3>Statistiques</h3>
 <ul>
     <li>Surface segmentée : {{ stats['surface_segmentee'] }}</li>
     <li>Autre mesure : {{ stats['autre_mesure'] }}</li>
 </ul>
+
+<p>{{ result }}</p>
 <a href="{{ url_for('menu') }}">Retour au menu</a>
 {% endblock %}

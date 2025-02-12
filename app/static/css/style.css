@@ -70,3 +70,7 @@ th, td {
     padding: 10px;
     text-align: left;
 }
+
+form input {
+    margin-bottom: 15px;
+}

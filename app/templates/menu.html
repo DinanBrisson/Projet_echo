@@ -2,14 +2,35 @@
 {% block title %}Menu - Choix du Modèle{% endblock %}
 {% block content %}
 <h2>Choix du Modèle de Segmentation</h2>
-<form method="post" action="{{ url_for('menu') }}">
+
+<!-- Affichage des messages flash (confirmation ou erreur) -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+<form method="post" action="{{ url_for('menu') }}" enctype="multipart/form-data">
     <label for="model">Sélectionnez un modèle :</label>
     <select id="model" name="model" required>
         {% for model in models %}
             <option value="{{ model }}">{{ model }}</option>
         {% endfor %}
     </select>
-    <br>
+
+    <br><br>
+
+    <label for="file">Téléverser un fichier :</label>
+    <input type="file" id="file" name="file" accept=".png, .jpg, .jpeg, .tif, .tiff">
+
+    <br><br>
+
     <button type="submit">Lancer la segmentation</button>
 </form>
+
 {% endblock %}
+

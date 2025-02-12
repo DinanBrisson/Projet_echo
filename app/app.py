@@ -2,6 +2,10 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import pytz
+from io import BytesIO
+from PIL import Image
+import base64
 
 app = Flask(__name__)
 app.secret_key = 'votre_cle_secrete'
@@ -10,6 +14,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'tif', 'tiff'}
 
 # Modèle pour les utilisateurs
 class User(db.Model):
@@ -89,6 +94,8 @@ def login():
             flash("Nom d'utilisateur ou mot de passe incorrect.", 'error')
     return render_template('login.html')
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Route de sélection du modèle de segmentation et lancement du traitement
 @app.route('/menu', methods=['GET', 'POST'])
@@ -100,7 +107,24 @@ def menu():
 
     if request.method == 'POST':
         selected_model = request.form.get('model')
+        file = request.files.get('file')
         segmentation_result, statistics = segmentation_process(selected_model)
+
+
+        if not file or not allowed_file(file.filename):
+            flash("Fichier invalide ou manquant !", 'error')
+            return redirect(url_for('menu'))
+
+            # Convertir l’image en mémoire (sans la sauvegarder)
+        try:
+            img = Image.open(BytesIO(file.read()))
+        except Exception:
+            flash("Erreur lors de la lecture de l'image.", 'error')
+            return redirect(url_for('menu'))
+
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        img_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         # Enregistrer le résultat dans l'historique de l'utilisateur
         new_history = History(
@@ -113,7 +137,7 @@ def menu():
         db.session.add(new_history)
         db.session.commit()
 
-        return render_template('result.html', result=segmentation_result, stats=statistics)
+        return render_template('result.html', result=segmentation_result, stats=statistics, img_data=img_base64)
 
     return render_template('menu.html', models=available_models)
 
@@ -135,7 +159,11 @@ def history():
         return redirect(url_for('login'))
 
     user_id = session.get('user_id')
-    histories = History.query.filter_by(user_id=user_id).order_by(History.date.desc()).all()
+    histories = History.query.join(User).filter(History.user_id == user_id).order_by(History.date.desc()).all()
+    local_tz = pytz.timezone('Europe/Paris')
+    for entry in histories:
+        entry.date = entry.date.replace(tzinfo=pytz.utc).astimezone(local_tz)
+
     return render_template('history.html', histories=histories)
 
 
