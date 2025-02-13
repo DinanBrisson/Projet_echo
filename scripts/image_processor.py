@@ -14,7 +14,8 @@ class ImageProcessor:
                  cropped_folder_gray="../Cropped+Mask/",
                  black_ratio_threshold=0.5,
                  intensity_threshold=10,
-                 delete_black_images=False):
+                 delete_black_images=False,
+                 expansion = 50):
         """
         :param data_folder: Folder containing the images and XML files.
         :param annotated_folder: Folder where the annotated images will be saved.
@@ -24,6 +25,7 @@ class ImageProcessor:
         :param intensity_threshold: The intensity threshold (0-255) to consider a pixel as dark.
         :param delete_black_images: If True, deletes the original image if the crop is too dark.
         """
+        self.expansion = expansion
         self.data_folder = data_folder
         self.annotated_folder = annotated_folder
         self.cropped_folder_gray = cropped_folder_gray
@@ -171,7 +173,7 @@ class ImageProcessor:
 
     def crop_and_save(self, img, annotation, base_name):
         """
-        Crops the image based on the annotation, resizes it, applies processing, and creates a corresponding mask.
+        Crops the image based on the annotation, ensuring a margin around it, and creates a corresponding mask.
 
         :param img: Original image.
         :param annotation: Annotation used for cropping.
@@ -180,8 +182,24 @@ class ImageProcessor:
         pts = np.array(annotation, np.int32)
         x, y, w, h = cv2.boundingRect(pts)
 
+        # Expand bounding box to include more surrounding area
+        x = max(x - self.expansion, 0)
+        y = max(y - self.expansion, 0)
+        w = min(w + 2 * self.expansion, img.shape[1] - x)
+        h = min(h + 2 * self.expansion, img.shape[0] - y)
+
+        # Create and save the mask before cropping
+        mask = np.zeros(img.shape[:2], dtype=np.uint8)
+        cv2.fillPoly(mask, [pts], 255)
+        mask_cropped = mask[y:y + h, x:x + w].copy()
+        mask_resized = cv2.resize(mask_cropped, (256, 256), interpolation=cv2.INTER_NEAREST)
+        mask_filename = f"{base_name}_mask.png"
+        mask_path = os.path.join(self.cropped_folder_gray, mask_filename)
+        cv2.imwrite(mask_path, mask_resized)
+        print(f"Mask saved: {mask_filename}")
+
         if w > 0 and h > 0:
-            # Crop the image to the bounding box of the annotation
+            # Crop the image with expanded bounding box
             cropped = img[y:y + h, x:x + w].copy()
             resized = cv2.resize(cropped, (256, 256))
 
@@ -189,23 +207,20 @@ class ImageProcessor:
                 print(f"The cropped region for {base_name} is too dark, ignored.")
                 return
 
-            # Convert to grayscale
-            gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-            median_filtered = cv2.medianBlur(gray, 3)
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-            final_img = clahe.apply(median_filtered)
-
             filename = f"{base_name}_cropped_gray.jpg"
             path = os.path.join(self.cropped_folder_gray, filename)
-            cv2.imwrite(path, final_img)
+            cv2.imwrite(path, resized)
             print(f"Cropped image saved: {filename}")
-
-            # Pass the **original image shape** to the mask function
-            self.create_and_save_mask(img.shape[:2], (256, 256), annotation, base_name)
 
             # Display the processed image
             plt.figure(figsize=(4, 4))
-            plt.imshow(final_img, cmap="gray")
+            plt.imshow(cv2.cvtColor(resized, cv2.COLOR_BGR2RGB))
+            plt.axis("off")
+            plt.title(base_name)
+            plt.show()
+
+            plt.figure(figsize=(4, 4))
+            plt.imshow(cv2.cvtColor(mask_resized, cv2.COLOR_BGR2RGB))
             plt.axis("off")
             plt.title(base_name)
             plt.show()
@@ -240,49 +255,6 @@ class ImageProcessor:
             annotation = annotations[key][0]
             self.crop_and_save(img, annotation, base_name)
 
-    def create_and_save_mask(self, original_shape, cropped_shape, annotation, base_name):
-        """
-        Creates a binary mask based on the annotation, normalizes it, converts to grayscale, resizes it, and saves it.
-
-        :param original_shape: Tuple (height, width) of the original image.
-        :param cropped_shape: Tuple (height, width) of the cropped image (e.g., (256, 256)).
-        :param annotation: List of points defining the annotation.
-        :param base_name: Base name for the output file.
-        """
-        # Create a black mask of the same size as the original image
-        full_mask = np.zeros(original_shape, dtype=np.uint8)
-
-        # Convert the annotation points into a NumPy array and draw the polygon on the mask
-        pts = np.array(annotation, np.int32)
-        cv2.fillPoly(full_mask, [pts], 255)  # Fill the annotated region with white
-
-        # Extract the same region as the cropped image
-        x, y, w, h = cv2.boundingRect(pts)
-        if w > 0 and h > 0:
-            # Crop the mask to match the selected region
-            cropped_mask = full_mask[y:y + h, x:x + w].copy()
-
-            # Resize the mask to match the cropped image dimensions (256x256)
-            resized_mask = cv2.resize(cropped_mask, cropped_shape, interpolation=cv2.INTER_NEAREST)
-
-            # Normalize the mask: Ensure values are only 0 or 255
-            normalized_mask = np.where(resized_mask > 0, 255, 0).astype(np.uint8)
-
-            # Save the mask as a PNG file without compression
-            mask_filename = f"{base_name}_mask.png"
-            mask_path = os.path.join(self.cropped_folder_gray, mask_filename)
-            cv2.imwrite(mask_path, normalized_mask, [cv2.IMWRITE_PNG_COMPRESSION, 0])
-            print(f"Mask saved: {mask_filename}")
-
-            # Display the mask
-            plt.figure(figsize=(4, 4))
-            plt.imshow(normalized_mask, cmap="gray")
-            plt.axis("off")
-            plt.title(f"Mask for {base_name}")
-            plt.show()
-        else:
-            print(f"Invalid annotation for {base_name}, mask not created.")
-
     def verify_image_mask_pairs(self):
         """
         Verifies if each cropped image has a corresponding mask in the same directory.
@@ -314,4 +286,3 @@ class ImageProcessor:
                 print(f"- {img}_cropped_gray.jpg (No {img}_mask.png found)")
         else:
             print("\nAll images have corresponding masks!")
-
