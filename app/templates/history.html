@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Historique des Segmentation{% endblock %}
+{% block title %}Historique des Segmentations{% endblock %}
 {% block content %}
 
 <h2>Historique des Segmentations</h2>
@@ -9,16 +9,20 @@
         <tr>
             <th>Utilisateur</th>
             <th>Modèle</th>
-            <th>Surface segmentée</th>
-            <th>Autre mesure</th>
+            <th>Image Segmentée</th>
             <th>Date</th>
         </tr>
         {% for entry in histories %}
             <tr>
-                <td>{{ entry.user.username }}</td>  <!-- Affiche le nom de l'utilisateur -->
+                <td>{{ entry.user.username }}</td>
                 <td>{{ entry.model }}</td>
-                <td>{{ entry.surface_segmentee }}</td>
-                <td>{{ entry.autre_mesure }}</td>
+                <td>
+                  {% if entry.composite_image %}
+                    <img src="data:image/png;base64,{{ entry.composite_image }}" alt="Image Segmentée" width="200">
+                  {% else %}
+                    Aucun
+                  {% endif %}
+                </td>
                 <td>{{ entry.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             </tr>
         {% endfor %}

@@ -1,17 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Résultats de Segmentation{% endblock %}
 {% block content %}
-{% if img_data %}
-    <h3>Image analysée</h3>
-    <img src="data:image/png;base64,{{ img_data }}" alt="Image segmentée" style="max-width: 100%; height: auto;">
-{% endif %}
-
-<h3>Statistiques</h3>
-<ul>
-    <li>Surface segmentée : {{ stats['surface_segmentee'] }}</li>
-    <li>Autre mesure : {{ stats['autre_mesure'] }}</li>
-</ul>
-
-<p>{{ result }}</p>
+<h2>Segmentation réalisée avec le modèle {{ model_name }}.</h2>
+<h3>Masque Prédit</h3>
+<img src="data:image/png;base64,{{ img_data }}" alt="Masque prédit">
 <a href="{{ url_for('menu') }}">Retour au menu</a>
 {% endblock %}
