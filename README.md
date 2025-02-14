@@ -9,6 +9,7 @@ L'objectif est d'améliorer la détection automatique des structures échographi
 
 ## Installation et Configuration
 git clone https://github.com/DinanBrisson/Projet_echo.git
+
 cd Projet_echo
 
 pip install -r requirements.txt
