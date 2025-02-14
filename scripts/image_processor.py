@@ -8,39 +8,50 @@ import os
 import json
 import re
 
+if not os.path.exists("./Data"):
+    os.makedirs("./Data", exist_ok=True)
 
 class ImageProcessor:
     def __init__(self,
                  data_folder=None,
-                 annotated_folder="../Data/Data_Annotated/",
-                 cropped_folder_gray="../Data/Cropped+Mask/",
+                 annotated_folder="Data_Annotated",
+                 cropped_folder_gray="Cropped+Mask",
                  black_ratio_threshold=0.5,
                  intensity_threshold=10,
                  delete_black_images=False,
-                 expansion = 50):
+                 expansion=50):
         """
-        :param data_folder: Folder containing the images and XML files.
-        :param annotated_folder: Folder where the annotated images will be saved.
-        :param cropped_folder_gray: Folder where the cropped grayscale images will be saved.
-        :param black_ratio_threshold: The ratio of dark pixels (intensity < intensity_threshold)
-                                      above which the crop is considered too dark.
+        :param data_folder: Folder containing images and annotation XML files.
+        :param annotated_folder: Folder to save annotated images.
+        :param cropped_folder_gray: Folder to save cropped grayscale images.
+        :param black_ratio_threshold: The ratio of dark pixels above which a crop is considered too dark.
         :param intensity_threshold: The intensity threshold (0-255) to consider a pixel as dark.
         :param delete_black_images: If True, deletes the original image if the crop is too dark.
         """
-        global user_input
         if data_folder is None:
-            user_input = input("Enter the path to the original data folder: ")
+            data_folder = input("Enter the path to the dataset (images + XML annotations): ")
+
+        if not os.path.exists(data_folder):
+            raise FileNotFoundError(f"The dataset folder '{data_folder}' does not exist!")
 
         self.expansion = expansion
         self.data_folder = data_folder
-        self.annotated_folder = annotated_folder
-        self.cropped_folder_gray = cropped_folder_gray
+        self.annotated_folder = os.path.join("./Data", annotated_folder)
+        self.cropped_folder_gray = os.path.join("./Data", cropped_folder_gray)
         self.black_ratio_threshold = black_ratio_threshold
         self.intensity_threshold = intensity_threshold
         self.delete_black_images = delete_black_images
 
         os.makedirs(self.annotated_folder, exist_ok=True)
         os.makedirs(self.cropped_folder_gray, exist_ok=True)
+
+        # Check for annotation files
+        xml_files = [f for f in os.listdir(self.data_folder) if f.endswith(".xml")]
+        if not xml_files:
+            raise FileNotFoundError("No XML annotation files found in the dataset!")
+
+        print(f"Dataset found: {len(xml_files)} annotation files detected.")
+
 
     @staticmethod
     def natural_sort_key(s):
@@ -149,8 +160,30 @@ class ImageProcessor:
             for image_file in xml_to_images[base_name]:
                 self.process_image(image_file, annotations)
         print("Processing completed.")
-        self.verify_image_mask_pairs() # Check if each cropped image has a mask
-        self.split_dataset()
+        if self.check_cropped_mask_contents():
+            self.verify_image_mask_pairs()
+            self.split_dataset()
+
+    def check_cropped_mask_contents(self):
+        """
+        Checks if the Cropped+Mask folder contains images and masks.
+        """
+        if not os.path.exists(self.cropped_folder_gray):
+            print(f"The folder {self.cropped_folder_gray} does not exist.")
+            return False
+
+        images = [f for f in os.listdir(self.cropped_folder_gray) if f.endswith("_cropped_gray.jpg")]
+        masks = [f for f in os.listdir(self.cropped_folder_gray) if f.endswith("_mask.png")]
+
+        print(f"\nChecking contents of {self.cropped_folder_gray}:")
+        print(f"Number of images detected: {len(images)}")
+        print(f"Number of masks detected: {len(masks)}")
+
+        if len(images) == 0 or len(masks) == 0:
+            print("\nError: No images or masks found in Cropped+Mask.")
+            return False
+
+        return True
 
     def process_image(self, image_file, annotations):
         """
@@ -295,7 +328,7 @@ class ImageProcessor:
             print("\nAll images have corresponding masks!")
 
     @staticmethod
-    def split_dataset(dataset_dir="../Data"):
+    def split_dataset(dataset_dir="./Data"):
         cropped_mask_dir = os.path.join(dataset_dir, "Cropped+Mask")
 
         for split in ["train", "val", "test"]:
@@ -304,7 +337,7 @@ class ImageProcessor:
             os.makedirs(os.path.join(dataset_dir, split, "images"), exist_ok=True)
             os.makedirs(os.path.join(dataset_dir, split, "masks"), exist_ok=True)
 
-        print("Train, validation, and test directories recreated.")
+        print("Train, validation, and test directories created.")
 
         image_files = sorted([f for f in os.listdir(cropped_mask_dir) if '_cropped_gray.jpg' in f])
         mask_files = sorted([f for f in os.listdir(cropped_mask_dir) if '_mask.png' in f])
