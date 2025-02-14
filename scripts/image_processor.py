@@ -1,3 +1,5 @@
+import shutil
+import random
 import cv2
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
@@ -9,9 +11,9 @@ import re
 
 class ImageProcessor:
     def __init__(self,
-                 data_folder="../Data/",
-                 annotated_folder="../Data_Annotated/",
-                 cropped_folder_gray="../Cropped+Mask/",
+                 data_folder=None,
+                 annotated_folder="../Data/Data_Annotated/",
+                 cropped_folder_gray="../Data/Cropped+Mask/",
                  black_ratio_threshold=0.5,
                  intensity_threshold=10,
                  delete_black_images=False,
@@ -25,6 +27,10 @@ class ImageProcessor:
         :param intensity_threshold: The intensity threshold (0-255) to consider a pixel as dark.
         :param delete_black_images: If True, deletes the original image if the crop is too dark.
         """
+        global user_input
+        if data_folder is None:
+            user_input = input("Enter the path to the original data folder: ")
+
         self.expansion = expansion
         self.data_folder = data_folder
         self.annotated_folder = annotated_folder
@@ -144,6 +150,7 @@ class ImageProcessor:
                 self.process_image(image_file, annotations)
         print("Processing completed.")
         self.verify_image_mask_pairs() # Check if each cropped image has a mask
+        self.split_dataset()
 
     def process_image(self, image_file, annotations):
         """
@@ -286,3 +293,53 @@ class ImageProcessor:
                 print(f"- {img}_cropped_gray.jpg (No {img}_mask.png found)")
         else:
             print("\nAll images have corresponding masks!")
+
+    @staticmethod
+    def split_dataset(dataset_dir="../Data"):
+        cropped_mask_dir = os.path.join(dataset_dir, "Cropped+Mask")
+
+        for split in ["train", "val", "test"]:
+            shutil.rmtree(os.path.join(dataset_dir, split, "images"), ignore_errors=True)
+            shutil.rmtree(os.path.join(dataset_dir, split, "masks"), ignore_errors=True)
+            os.makedirs(os.path.join(dataset_dir, split, "images"), exist_ok=True)
+            os.makedirs(os.path.join(dataset_dir, split, "masks"), exist_ok=True)
+
+        print("Train, validation, and test directories recreated.")
+
+        image_files = sorted([f for f in os.listdir(cropped_mask_dir) if '_cropped_gray.jpg' in f])
+        mask_files = sorted([f for f in os.listdir(cropped_mask_dir) if '_mask.png' in f])
+
+        image_mask_pairs = [(img, f"{img.replace('_cropped_gray.jpg', '_mask.png')}") for img in image_files if
+                            f"{img.replace('_cropped_gray.jpg', '_mask.png')}" in mask_files]
+        print(f"\nValid image-mask pairs: {len(image_mask_pairs)}")
+
+        random.shuffle(image_mask_pairs)
+        train_size = int(0.7 * len(image_mask_pairs))
+        val_size = int(0.2 * len(image_mask_pairs))
+        test_size = len(image_mask_pairs) - (train_size + val_size)
+
+        print(f"Train: {train_size}, Validation: {val_size}, Test: {test_size}")
+
+        train_pairs = image_mask_pairs[:train_size]
+        val_pairs = image_mask_pairs[train_size:train_size + val_size]
+        test_pairs = image_mask_pairs[train_size + val_size:]
+
+        def copy_files(pairs, split):
+            img_dir = os.path.join(dataset_dir, split, "images")
+            mask_dir = os.path.join(dataset_dir, split, "masks")
+            for img_name, mask_name in pairs:
+                shutil.copy(os.path.join(cropped_mask_dir, img_name), os.path.join(img_dir, img_name))
+                shutil.copy(os.path.join(cropped_mask_dir, mask_name), os.path.join(mask_dir, mask_name))
+
+        copy_files(train_pairs, "train")
+        copy_files(val_pairs, "val")
+        copy_files(test_pairs, "test")
+
+        print("\nDataset successfully re-split with strict image-mask pairing!")
+
+        for split in ["train", "val", "test"]:
+            img_path = os.path.join(dataset_dir, split, "images")
+            mask_path = os.path.join(dataset_dir, split, "masks")
+            img_count = len(os.listdir(img_path)) if os.path.exists(img_path) else 0
+            mask_count = len(os.listdir(mask_path)) if os.path.exists(mask_path) else 0
+            print(f"{split.capitalize()}: {img_count} images, {mask_count} masks")
