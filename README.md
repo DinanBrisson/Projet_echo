@@ -27,6 +27,8 @@ python scripts/script.py
 Lacement de l'app : 
 python app/app.py
 
+click on : http://127.0.0.1:5000
+
 ## Licence
 
 Dinan BRISSON - M2 TMS ISEN
