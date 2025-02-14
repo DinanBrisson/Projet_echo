@@ -26,6 +26,8 @@ L'objectif est d'améliorer la détection automatique des structures échographi
 git clone https://github.com/DinanBrisson/Projet_echo.git
 cd Projet_echo
 
+pip install -r requirements.txt
+
 Télécharger les données originales :
 Les images originales doivent être téléchargés depuis le lien suivant et placés dans le dossier data/
 
