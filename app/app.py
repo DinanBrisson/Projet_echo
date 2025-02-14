@@ -1,4 +1,5 @@
 import os
+import gdown
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -14,30 +15,34 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from flask_migrate import Migrate
 
-# Function to load the appropriate model based on the user's choice.
+model_drive_links = {
+    "Unet_resnet50": "https://drive.google.com/uc?id=1y1HXzzQKgUp4nikm9DGi8ofC5OROpaBQ",
+    "Unet_vgg16": "https://drive.google.com/uc?id=1BrEfuMbt21pAsfNLQyZCDUj_XAX8QdBT"
+}
+
+local_model_path = "models/"
+os.makedirs(local_model_path, exist_ok=True)
+
+
+def download_model(model_type):
+    model_file = os.path.join(local_model_path, f"{model_type}.pth")
+    if not os.path.exists(model_file):
+        gdown.download(model_drive_links[model_type], model_file, quiet=False)
+    return model_file
+
+
 def load_model(model_type):
+    model_file = download_model(model_type)
     if model_type == "Unet_resnet50":
-        model = smp.Unet(
-            encoder_name="resnet50",       # Using resnet50 encoder
-            encoder_weights="imagenet",      # Pretrained on ImageNet
-            in_channels=1,                   # Single channel (grayscale)
-            classes=1                        # Binary segmentation
-        )
-        model.load_state_dict(torch.load("../unet_resnet50.pth", map_location=torch.device("cpu")))
-        model.eval()
-        return model
+        model = smp.Unet(encoder_name="resnet50", encoder_weights=None, in_channels=1, classes=1)
     elif model_type == "Unet_vgg16":
-        model = smp.Unet(
-            encoder_name="vgg16",          # Using vgg16 encoder
-            encoder_weights="imagenet",      # Pretrained on ImageNet
-            in_channels=1,                   # Single channel (grayscale)
-            classes=1                        # Binary segmentation
-        )
-        model.load_state_dict(torch.load("../unet_vgg16.pth", map_location=torch.device("cpu")))
-        model.eval()
-        return model
+        model = smp.Unet(encoder_name="vgg16", encoder_weights=None, in_channels=1, classes=1)
     else:
         raise ValueError("Unknown model type: " + model_type)
+
+    model.load_state_dict(torch.load(model_file, map_location=torch.device("cpu")))
+    model.eval()
+    return model
 
 
 def predict_mask(model, image):
