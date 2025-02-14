@@ -29,6 +29,10 @@ python app/app.py
 
 click on : http://127.0.0.1:5000
 
+Pour la 1ère segmentation de chaque modèle, l'application télécharge le modèle depuis google drive, l'affichage du résultat prend donc un peu de temps.
+Les segmentations suivantes sont ensuite rapide.
+
+
 ## Licence
 
 Dinan BRISSON - M2 TMS ISEN
